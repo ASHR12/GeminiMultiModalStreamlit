@@ -1,5 +1,4 @@
 # app.py
-
 import streamlit as st
 from utils.util import (
   upload_file_to_gemini,
@@ -14,7 +13,8 @@ from utils.util import (
 from utils.model import load_model
 from PIL import Image
 from typing import TypedDict, Optional, List, Dict, Any
-
+from utils.util import upload_file_to_gemini
+import google.generativeai as genai
 
 def main():
   st.set_page_config(page_title="Gemini Multimodal", layout="wide")
@@ -31,7 +31,6 @@ def main():
       audio_tab()
   elif tab == "File API":
       file_api_tab()
-
 
 def video_tab():
 
@@ -257,7 +256,6 @@ def audio_tab():
 
 
 def file_api_tab():
-  import google.generativeai as genai
 
   st.header("📂 File API Operations")
   st.write("List and manage files uploaded to the API.")
@@ -315,6 +313,7 @@ def file_api_tab():
                   st.success("All files have been deleted.")
               except Exception as e:
                   st.error(f"Error deleting all files: {e}")
+
 
 if __name__ == "__main__":
   main()

@@ -6,9 +6,8 @@ from google.generativeai import caching
 import datetime
 
 def load_model(type, schemaType):
-  load_dotenv() 
+  load_dotenv()
   genai.configure(api_key=os.getenv('API_KEY'))
-  
   if type is not None and schemaType is not None:
       # Configuration when both type and schemaType are provided
       generation_config = GenerationConfig(

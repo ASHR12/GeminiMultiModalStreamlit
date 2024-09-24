@@ -3,7 +3,6 @@ import google.generativeai as genai
 from typing import Optional, Dict, Any, List
 import json
 import time
-from google.generativeai import ChatSession
 from PIL import Image
 import streamlit as st
 import re
@@ -35,7 +34,7 @@ def poll_file_processing(uploaded_file) -> Optional[Dict[str, Any]]:
                 time.sleep(1)
                 uploaded_file = genai.get_file(uploaded_file.name)
             if uploaded_file.state.name == "ACTIVE":
-                st.success("File is ready for analysis.")
+                st.success(" File processing completed.")
                 return uploaded_file
             elif uploaded_file.state.name == "FAILED":
                 st.error("File processing failed.")
@@ -87,15 +86,6 @@ Ensure the transcription captures all spoken words accurately, including filler 
     except Exception as e:
         st.error(f"Error generating transcription: {e}")
         return None
-
-
-def get_chat_response(chat: ChatSession, prompt: str) -> str:
-    """Generates a chat response from the chat session."""
-    text_response = []
-    responses = chat.send_message(prompt, stream=True)
-    for chunk in responses:
-        text_response.append(chunk.text)
-    return "".join(text_response)
 
 
 def remove_markdown(text):
