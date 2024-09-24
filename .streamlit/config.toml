@@ -1,0 +1,3 @@
+     [server]
+     maxUploadSize = 2000  # 2000 MB = 2 GB
+     

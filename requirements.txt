@@ -1,0 +1,9 @@
+google-generativeai
+streamlit
+pillow
+ipython
+opencv-python
+rich
+streamlit
+Live
+python-dotenv

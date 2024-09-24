@@ -1,0 +1,5 @@
+venv
+.env
+*.mp4
+*.mp3
+*.pyc
