@@ -216,30 +216,63 @@ def convert_normalized_to_pixel(bounding_boxes, image_width, image_height):
 
 
 def draw_bounding_boxes(image, bounding_boxes, output_path=None):
-  """
-  Draws multiple bounding boxes on the image.
-  
-  Args:
-      image (PIL.Image.Image): The original image.
-      bounding_boxes (list of dict): List of bounding boxes with pixel coordinates.
-      output_path (str, optional): Path to save the annotated image. If None, returns the image object.
-      
-  Returns:
-      PIL.Image.Image: Image with bounding boxes drawn.
-  """
-  draw = ImageDraw.Draw(image)
-  
-  for box in bounding_boxes:
-      xmin = box['xmin']
-      ymin = box['ymin']
-      xmax = box['xmax']
-      ymax = box['ymax']
-      
-      # Draw a red bounding box with a line width of 2
-      draw.rectangle([xmin, ymin, xmax, ymax], outline="red", width=4)
-      
-  
-  if output_path:
-      image.save(output_path)
-      print(f"Annotated image saved at '{output_path}'.")
-  return image
+    """
+    Draws multiple bounding boxes on the image with labeled text.
+    
+    Args:
+        image (PIL.Image.Image): The original image.
+        bounding_boxes (list of dict): List of bounding boxes with pixel coordinates.
+        output_path (str, optional): Path to save the annotated image. If None, returns the image object.
+        
+    Returns:
+        PIL.Image.Image: Image with bounding boxes and labels drawn.
+    """
+    draw = ImageDraw.Draw(image)
+    
+    # You may need to adjust the font size based on your needs
+    try:
+        from PIL import ImageFont
+        font = ImageFont.truetype("arial.ttf", 20)
+    except:
+        font = ImageFont.load_default()
+    
+    for idx, box in enumerate(bounding_boxes, 1):
+        xmin = box['xmin']
+        ymin = box['ymin']
+        xmax = box['xmax']
+        ymax = box['ymax']
+        name = box['name']
+        
+        # Draw the red bounding box
+        draw.rectangle([xmin, ymin, xmax, ymax], outline="red", width=1)
+        
+        # Prepare the label text
+        label_text = f"{name}"
+        
+        # Get text size
+        text_bbox = draw.textbbox((0, 0), label_text, font=font)
+        text_width = text_bbox[2] - text_bbox[0]
+        text_height = text_bbox[3] - text_bbox[1]
+        
+        # Calculate text position (above the bounding box)
+        text_x = xmin
+        text_y = max(0, ymin - text_height - 2)  # 2 pixels padding
+        
+        # Draw yellow background for text
+        draw.rectangle(
+            [
+                text_x - 2,  # 2 pixels padding
+                text_y - 2,
+                text_x + text_width + 2,
+                text_y + text_height + 2
+            ],
+            fill="yellow"
+        )
+        
+        # Draw black text on yellow background
+        draw.text((text_x, text_y), label_text, fill="black", font=font)
+    
+    if output_path:
+        image.save(output_path)
+        print(f"Annotated image saved at '{output_path}'.")
+    return image

@@ -89,135 +89,129 @@ def video_tab():
 
 
 def image_tab():
+    @st.cache_resource
+    def get_model():
+        model = load_model(type=None, schemaType=None)
+        return model
 
-  @st.cache_resource
-  def get_model():
-      model = load_model(type=None, schemaType=None)
-      return model
+    def process_image(image: Image.Image, object_name: str, model):
+        # Define the dynamic prompt with the user-specified object
+        prompt = f""" 
+        You are given an image. Identify all {object_name} in the image and provide their bounding boxes. 
+        Return ONLY a valid JSON array in the exact format shown below. 
+        return specific name , let say if it's a dog and you know the dog breed name return that.
+        Do NOT include any additional text, explanations, comments, trailing commas, or markdown formatting such as code blocks.
+        Use this JSON schema:
+        [
+            {{
+                "name": "string",
+                "ymin": float,
+                "xmin": float,
+                "ymax": float,
+                "xmax": float
+            }}
+        ]
+        """
+        try:
+            response = model.generate_content([image, prompt])
+        except Exception as e:
+            st.error(f"Error generating content from the model: {e}")
+            return None
 
+        final_response = remove_markdown(response.text)
+        
+        try:
+            bounding_boxes = parse_bounding_boxes(final_response)
+        except ValueError as ve:
+            st.error(f"Error parsing bounding boxes: {ve}")
+            return None
 
-  def process_image(image: Image.Image, object_name: str, model):
-      # Define the dynamic prompt with the user-specified object
-      prompt = f"""
-You are given an image. Identify all {object_name} in the image and provide their bounding boxes.
-Return ONLY a valid JSON array in the exact format shown below. Do NOT include any additional text, explanations, comments, trailing commas, or markdown formatting such as code blocks.
-Use this JSON schema:
-[
-{{
-"name": "string",
-"ymin": float,
-"xmin": float,
-"ymax": float,
-"xmax": float
-}}
-]
-"""
+        image_width, image_height = image.size
+        converted_boxes = convert_normalized_to_pixel(bounding_boxes, image_width, image_height)
+        return converted_boxes
 
-      # Generate content using the multimodal model
-      try:
-          response = model.generate_content([image, prompt])
-      except Exception as e:
-          st.error(f"Error generating content from the model: {e}")
-          return None
+    st.header("📸 Object Detection")
+    st.write("""
+    Upload an image or use your camera to capture one, then specify the object you want to detect.
+    The application will draw bounding boxes around the detected objects and display their coordinates.
+    """)
 
-      # Clean the response
-      final_response = remove_markdown(response.text)
+    # Sidebar for user inputs
+    st.sidebar.header("🔍 Detection Settings")
+    
+    # Radio buttons to select input method
+    input_method = st.sidebar.radio(
+        "Select Image Input Method",
+        # ("Upload Image", "Use Camera")
+        ("Upload Image")
+    )
 
-      # Parse bounding boxes
-      try:
-          bounding_boxes = parse_bounding_boxes(final_response)
-      except ValueError as ve:
-          st.error(f"Error parsing bounding boxes: {ve}")
-          return None
+    # Initialize uploaded_image as None
+    uploaded_image = None
 
-      # Get image dimensions
-      image_width, image_height = image.size
+    if input_method == "Upload Image":
+        uploaded_file = st.sidebar.file_uploader("📂 Choose an image...", type=["jpg", "jpeg", "png"])
+        if uploaded_file is not None:
+            try:
+                uploaded_image = Image.open(uploaded_file).convert("RGB")
+                st.image(uploaded_image, caption='🖼️ Uploaded Image', use_container_width=True)
+            except Exception as e:
+                st.error(f"❌ Error opening image: {e}")
+    # elif input_method == "Use Camera":
+    #     captured_image = st.sidebar.camera_input("📸 Capture an image")
+    #     if captured_image is not None:
+    #         try:
+    #             uploaded_image = Image.open(captured_image).convert("RGB")
+    #             st.image(uploaded_image, caption='🖼️ Captured Image', use_container_width=True)
+    #         except Exception as e:
+    #             st.error(f"❌ Error capturing image: {e}")
 
-      # Convert normalized coordinates to pixel values
-      converted_boxes = convert_normalized_to_pixel(bounding_boxes, image_width, image_height)
-      return converted_boxes
+    # Add detect all checkbox
+    detect_all = st.sidebar.checkbox("Detect All Objects")
+    # Show object input only if detect all is not checked
+    if not detect_all:
+        object_name = st.sidebar.text_input("📝 Enter the object to detect", placeholder="e.g., cat, bottle")
+    else:
+        object_name = "all"  # Set object_name to "all" when detect all is checked
 
-  st.header("📸 Object Detection")
-  st.write(
-      """
-Upload an image or use your camera to capture one, then specify the object you want to detect.
-The application will draw bounding boxes around the detected objects and display their coordinates.
-"""
-  )
+    detect_button = st.sidebar.button("🚀 Detect Objects")
 
-  # Sidebar for user inputs
-  st.sidebar.header("🔍 Detection Settings")
+    if detect_button:
+        if uploaded_image is not None:
+            if not detect_all and not object_name.strip():
+                st.error("⚠️ Please enter a valid object name to detect.")
+                st.stop()
 
-  # Radio buttons to select input method
-  input_method = st.sidebar.radio(
-      "Select Image Input Method",
-      ("Upload Image", "Use Camera")
-  )
+            with st.spinner("🔄 Loading the model..."):
+                model = get_model()
 
-  # Initialize uploaded_image as None
-  uploaded_image = None
+            with st.spinner("🔍 Detecting objects..."):
+                converted_boxes = process_image(uploaded_image, object_name, model)
 
-  if input_method == "Upload Image":
-      uploaded_file = st.sidebar.file_uploader("📂 Choose an image...", type=["jpg", "jpeg", "png"])
-      if uploaded_file is not None:
-          try:
-              # Open the uploaded image
-              uploaded_image = Image.open(uploaded_file).convert("RGB")
-              st.image(uploaded_image, caption='🖼️ Uploaded Image', use_column_width=True)
-          except Exception as e:
-              st.error(f"❌ Error opening image: {e}")
-  elif input_method == "Use Camera":
-      captured_image = st.sidebar.camera_input("📸 Capture an image")
-      if captured_image is not None:
-          try:
-              # Open the captured image
-              uploaded_image = Image.open(captured_image).convert("RGB")
-              st.image(uploaded_image, caption='🖼️ Captured Image', use_column_width=True)
-          except Exception as e:
-              st.error(f"❌ Error capturing image: {e}")
+            if converted_boxes is None:
+                st.error("❌ An error occurred during object detection.")
+                st.stop()
 
-  object_name = st.sidebar.text_input("📝 Enter the object to detect", placeholder="e.g., cat, bottle")
-  detect_button = st.sidebar.button("🚀 Detect Objects")
+            if converted_boxes:
+                annotated_image = draw_bounding_boxes(uploaded_image.copy(), converted_boxes, output_path=None)
+                st.image(annotated_image, caption='🖼️ Annotated Image', use_container_width=True)
 
-  if detect_button:
-      if uploaded_image is not None:
-          if not object_name.strip():
-              st.error("⚠️ Please enter a valid object name to detect.")
-              st.stop()
-
-          # Load the model
-          with st.spinner("🔄 Loading the model..."):
-              model = get_model()
-
-          # Process the image
-          with st.spinner("🔍 Detecting objects..."):
-              converted_boxes = process_image(uploaded_image, object_name, model)
-
-          if converted_boxes is None:
-              st.error("❌ An error occurred during object detection.")
-              st.stop()
-
-          if converted_boxes:
-              # Draw bounding boxes using the existing function
-              annotated_image = draw_bounding_boxes(uploaded_image.copy(), converted_boxes, output_path=None)
-
-              # Display the annotated image
-              st.image(annotated_image, caption='🖼️ Annotated Image', use_column_width=True)
-
-              # Display bounding box coordinates
-              st.subheader("📍 Bounding Box Coordinates")
-              for idx, box in enumerate(converted_boxes, start=1):
-                  st.markdown(f"**{idx}. {box['name'].capitalize()}:**")
-                  st.markdown(f"- ymin: {box['ymin']}")
-                  st.markdown(f"- xmin: {box['xmin']}")
-                  st.markdown(f"- ymax: {box['ymax']}")
-                  st.markdown(f"- xmax: {box['xmax']}")
-                  st.markdown("---")
-          else:
-              st.warning(f"⚠️ No instances of '{object_name}' were found in the image.")
-      else:
-          st.error("⚠️ Please provide an image either by uploading or using the camera.")
-          st.stop()
+                st.subheader("📍 Bounding Box Coordinates")
+                for idx, box in enumerate(converted_boxes, start=1):
+                    st.markdown(f"**{idx}. {box['name'].capitalize()}:**")
+                    st.markdown(f"- ymin: {box['ymin']}")
+                    st.markdown(f"- xmin: {box['xmin']}")
+                    st.markdown(f"- ymax: {box['ymax']}")
+                    st.markdown(f"- xmax: {box['xmax']}")
+                    st.markdown("---")
+            else:
+                if detect_all:
+                    st.warning("⚠️ No objects were detected in the image.")
+                else:
+                    st.warning(f"⚠️ No instances of '{object_name}' were found in the image.")
+        else:
+            st.error("⚠️ Please provide an image either by uploading or using the camera.")
+            st.stop()
 
 
 def audio_tab():
