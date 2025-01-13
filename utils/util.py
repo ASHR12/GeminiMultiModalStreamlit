@@ -243,8 +243,8 @@ def draw_bounding_boxes(image, bounding_boxes, output_path=None):
         ymax = box['ymax']
         name = box['name']
         
-        # Draw the red bounding box
-        draw.rectangle([xmin, ymin, xmax, ymax], outline="red", width=1)
+        # Draw the green bounding box
+        draw.rectangle([xmin, ymin, xmax, ymax], outline="green", width=1)
         
         # Prepare the label text
         label_text = f"{name}"
