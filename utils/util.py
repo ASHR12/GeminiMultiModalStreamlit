@@ -190,11 +190,11 @@ def convert_normalized_to_pixel(bounding_boxes, image_width, image_height):
   """
   converted_boxes = []
   for box in bounding_boxes:
-      name = (box['name'])
-      xmin = (box['xmin'] / 1000) * image_width
-      ymin = (box['ymin'] / 1000) * image_height
-      xmax = (box['xmax'] / 1000) * image_width
-      ymax = (box['ymax'] / 1000) * image_height
+      name = box['name']
+      xmin = box['xmin'] * image_width
+      ymin = box['ymin'] * image_height
+      xmax = box['xmax'] * image_width
+      ymax = box['ymax'] * image_height
       
       # Ensure coordinates are integers
       xmin, ymin, xmax, ymax = map(int, [xmin, ymin, xmax, ymax])
@@ -244,7 +244,7 @@ def draw_bounding_boxes(image, bounding_boxes, output_path=None):
         name = box['name']
         
         # Draw the red bounding box
-        draw.rectangle([xmin, ymin, xmax, ymax], outline="red", width=1)
+        draw.rectangle([xmin, ymin, xmax, ymax], outline="red", width=2)
         
         # Prepare the label text
         label_text = f"{name}"
